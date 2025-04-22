@@ -131,6 +131,7 @@
             <div class="settings-row">
                 <label for="hold-time">止める時間:</label>
                 <select id="hold-time">
+                    <option value="0">0秒</option>
                     <option value="5">5秒</option>
                     <option value="8">8秒</option>
                     <option value="10" selected>10秒</option>
@@ -208,13 +209,23 @@
                 resetExercise();
                 return;
             }
+            // ★ 止める時間を毎回ここで取得する
+            const selectedHoldTime = holdTimeSelect.value; 
             
             // 次のフェーズまたはセットに進む
             if (currentPhase === 'start') {
                 // スタート動画が終わったら最初のセットの「吐く」へ
                 playPhase('exhale');
             } else if (currentPhase === 'exhale') {
-                playPhase('hold');
+                if (selectedHoldTime === "0") { 
+                    // もし止める時間が "0" 秒に設定されていたら...
+                    // holdフェーズをスキップして、すぐにinhaleフェーズへ移行
+                    playPhase('inhale'); 
+                } else {
+                    // 止める時間が 0秒でなければ...
+                    // 通常通りholdフェーズへ移行
+                    playPhase('hold'); 
+                }
             } else if (currentPhase === 'hold') {
                 playPhase('inhale');
             } else if (currentPhase === 'inhale') {
