@@ -195,9 +195,8 @@
         </div>
     </div>
 
-    <audio id="bgm-player" loop>
+    <audio id="bgm-player" loop playsinline>
         <source src="resonance_of_time.mp3" type="audio/mpeg"> 
-        <!-- ↑ BGMファイルのパスを指定 -->
         お使いのブラウザはオーディオ再生に対応していません。
     </audio>
 
@@ -279,6 +278,7 @@
                 // ★★★ 再生許可を得るための「おまじない」★★★
                 // ボタンが押された直後に、一瞬だけBGMを再生してすぐに止める。
                 // これにより、iOSブラウザに「ユーザーが音声を再生する意思を示した」と認識させる。
+                bgmPlayer.load(); // ファイルの読み込みを試みる
                 bgmPlayer.play().catch(e => { 
                     // ここでの再生失敗エラーは無視しても良い場合が多い
                     // (まだ再生準備ができていない場合など)
@@ -317,12 +317,13 @@
 
             // ★ BGM再生制御
             if (bgmOptionValue === 'bgmon') { // BGMありの場合
-                bgmPlayer.volume = 0.2;
-
-                bgmPlayer.play().catch(error => { 
-                   console.error('BGMの再生に失敗しました:', error);
-                   //alert('BGMの再生に失敗しました: resonance_of_time.mp3\nエラー: ' + error.message);
-                });
+                bgmPlayer.volume = 0.1;
+                // ★ 少し遅らせて再生を試みる (例: 100ミリ秒後)
+                setTimeout(() => {
+                    bgmPlayer.play().catch(error => { 
+                        console.error('BGMの再生に失敗しました (setTimeout):', error);
+                    });
+                }, 100); // 100ミリ秒後に実行
             } else { // BGMなしの場合
                  bgmPlayer.pause(); 
                  bgmPlayer.currentTime = 0; 
