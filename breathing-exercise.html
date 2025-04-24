@@ -108,17 +108,29 @@
             <h2>設定</h2>
             
             <div class="settings-row">
-                <label>音声オプション:</label>
+                <label>時計の音:</label>
                 <div class="radio-group">
                     <label class="radio-option">
-                        <input type="radio" name="sound-option" value="clock" checked> 時計の音
+                        <input type="radio" name="sound-option" value="clock" checked> あり
                     </label>
                     <label class="radio-option">
-                        <input type="radio" name="sound-option" value="soundon"> 音楽付き
+                        <input type="radio" name="sound-option" value="nosound"> なし
                     </label>
                 </div>
             </div>
             
+            <div class="settings-row">
+                <label>BGM:</label>
+                <div class="radio-group">
+                    <label class="radio-option">
+                        <input type="radio" name="bgm-option" value="bgmon" checked> あり
+                    </label>
+                    <label class="radio-option">
+                        <input type="radio" name="bgm-option" value="bgmoff"> なし
+                    </label>
+                </div>
+            </div>
+
             <div class="settings-row">
                 <label for="exhale-time">吐く時間:</label>
                 <select id="exhale-time">
@@ -132,6 +144,7 @@
                 <label for="hold-time">止める時間:</label>
                 <select id="hold-time">
                     <option value="0">0秒</option>
+                    <option value="2">2秒</option>
                     <option value="5">5秒</option>
                     <option value="8">8秒</option>
                     <option value="10" selected>10秒</option>
@@ -141,6 +154,7 @@
             <div class="settings-row">
                 <label for="inhale-time">吸う時間:</label>
                 <select id="inhale-time">
+                    <option value="2">2秒</option>
                     <option value="5">5秒</option>
                     <option value="8">8秒</option>
                     <option value="10" selected>10秒</option>
@@ -181,9 +195,20 @@
         </div>
     </div>
 
+    <audio id="bgm-player" loop>
+        <source src="resonance_of_time.mp3" type="audio/mpeg"> 
+        <!-- ↑ BGMファイルのパスを指定 -->
+        お使いのブラウザはオーディオ再生に対応していません。
+    </audio>
+
+    <div style="text-align: center; margin-top: 30px; font-size: 12px; color: #888;">
+        version 2.0
+    </div>
+
     <script>
         // DOM要素
         const videoPlayer = document.getElementById('video-player');
+        const bgmPlayer = document.getElementById('bgm-player'); // ★ BGMプレーヤーを追加
         const startBtn = document.getElementById('start-btn');
         const stopBtn = document.getElementById('stop-btn');
         const statusDisplay = document.getElementById('status');
@@ -195,13 +220,17 @@
         const inhaleTimeSelect = document.getElementById('inhale-time');
         const setsSelect = document.getElementById('sets');
         const soundOptions = document.getElementsByName('sound-option');
+        const bgmOptions = document.getElementsByName('bgm-option'); // ★ BGMオプションを追加
+
         
         let currentPhase = '';
         let currentSet = 1;
         let totalSets = 8;
         let isPlaying = false;
         let stopRequested = false;
-        let soundOption = 'soundon'; // デフォルト
+        let soundOption = 'clock'; // ★ 時計の音のデフォルト (clock or nosound)
+        let bgmOptionValue = 'bgmon'; // ★ BGMオプションのデフォルト (bgmon or bgmoff)
+
         
         // ビデオ再生が終了したときのイベントリスナー
         videoPlayer.addEventListener('ended', function() {
@@ -263,9 +292,29 @@
             // 音声オプションを取得
             for (const option of soundOptions) {
                 if (option.checked) {
-                    soundOption = option.value;
+                    soundOption = option.value;// 'clock' または 'nosound'
                     break;
                 }
+            }
+
+            // ★ BGMオプションを取得
+            for (const option of bgmOptions) {
+                if (option.checked) {
+                    bgmOptionValue = option.value; // 'bgmon' または 'bgmoff'
+                    break;
+                }
+            }
+
+            // ★ BGM再生制御
+            if (bgmOptionValue === 'bgmon') { // BGMありの場合
+                bgmPlayer.volume = 0.1;
+                bgmPlayer.play().catch(error => { 
+                   console.error('BGMの再生に失敗しました:', error);
+                   alert('BGMの再生に失敗しました: resonance_of_time.mp3\nエラー: ' + error.message);
+                });
+            } else { // BGMなしの場合
+                 bgmPlayer.pause(); 
+                 bgmPlayer.currentTime = 0; 
             }
             
             // 設定を取得
@@ -293,6 +342,9 @@
             
             // フェーズに応じたステータス表示と動画ソースを設定
             let videoSrc = '';
+
+            // ★ 動画ファイル名のサフィックスは soundOption ('clock' or 'nosound') で決める
+            let videoSoundSuffix = soundOption;
             
             switch (phase) {
                 case 'start':
@@ -301,15 +353,15 @@
                     break;
                 case 'exhale':
                     statusDisplay.textContent = '吐く';
-                    videoSrc = `exhale${exhaleTimeSelect.value}s-${soundOption}.mp4`;
+                    videoSrc = `exhale${exhaleTimeSelect.value}s-${videoSoundSuffix}.mp4`;
                     break;
                 case 'hold':
                     statusDisplay.textContent = '止める';
-                    videoSrc = `hold${holdTimeSelect.value}s-${soundOption}.mp4`;
+                    videoSrc = `hold${holdTimeSelect.value}s-${videoSoundSuffix}.mp4`;
                     break;
                 case 'inhale':
                     statusDisplay.textContent = '吸う';
-                    videoSrc = `inhale${inhaleTimeSelect.value}s-${soundOption}.mp4`;
+                    videoSrc = `inhale${inhaleTimeSelect.value}s-${videoSoundSuffix}.mp4`;
                     break;
                 case 'end':
                     statusDisplay.textContent = '終了';
@@ -336,11 +388,16 @@
         function resetExercise() {
             isPlaying = false;
             currentPhase = '';
+            videoPlayer.pause(); // ★ 動画を一時停止
             videoPlayer.src = '';
+            // ★★★ BGM停止処理を追加 ★★★
+            bgmPlayer.pause(); 
+            bgmPlayer.currentTime = 0; // 再生位置を最初に戻す
             statusDisplay.textContent = '準備完了';
             progressDisplay.textContent = '';
             startBtn.style.display = 'block';
             stopBtn.style.display = 'none';
+            stopRequested = false; // ★ 停止要求フラグもリセット
         }
     </script>
 </body>
