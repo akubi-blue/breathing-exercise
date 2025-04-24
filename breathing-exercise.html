@@ -276,6 +276,16 @@
         // スタートボタンのイベントリスナー
         startBtn.addEventListener('click', function() {
             if (!isPlaying) {
+                // ★★★ 再生許可を得るための「おまじない」★★★
+                // ボタンが押された直後に、一瞬だけBGMを再生してすぐに止める。
+                // これにより、iOSブラウザに「ユーザーが音声を再生する意思を示した」と認識させる。
+                bgmPlayer.play().catch(e => { 
+                    // ここでの再生失敗エラーは無視しても良い場合が多い
+                    // (まだ再生準備ができていない場合など)
+                    console.log("Pre-play attempt for unlocking audio."); 
+                });
+                bgmPlayer.pause();
+
                 startExercise();
             }
         });
@@ -308,9 +318,10 @@
             // ★ BGM再生制御
             if (bgmOptionValue === 'bgmon') { // BGMありの場合
                 bgmPlayer.volume = 0.2;
+
                 bgmPlayer.play().catch(error => { 
                    console.error('BGMの再生に失敗しました:', error);
-                   alert('BGMの再生に失敗しました: resonance_of_time.mp3\nエラー: ' + error.message);
+                   //alert('BGMの再生に失敗しました: resonance_of_time.mp3\nエラー: ' + error.message);
                 });
             } else { // BGMなしの場合
                  bgmPlayer.pause(); 
