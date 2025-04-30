@@ -230,6 +230,84 @@
         let soundOption = 'clock'; // ★ 時計の音のデフォルト (clock or nosound)
         let bgmOptionValue = 'bgmon'; // ★ BGMオプションのデフォルト (bgmon or bgmoff)
 
+        // ★★★ ローカルストレージのキー名を定義 ★★★
+        const LS_KEYS = {
+            SOUND_OPTION: 'breathing_soundOption',
+            BGM_OPTION: 'breathing_bgmOption',
+            EXHALE_TIME: 'breathing_exhaleTime',
+            HOLD_TIME: 'breathing_holdTime',
+            INHALE_TIME: 'breathing_inhaleTime',
+            SETS: 'breathing_sets'
+        }
+
+        // ★★★ ページ読み込み時に設定を復元する関数 ★★★
+        function loadSettings() {
+            // 各選択要素について、localStorageから値を取得し、設定する
+            const savedSoundOption = localStorage.getItem(LS_KEYS.SOUND_OPTION);
+            if (savedSoundOption) {
+                soundOptions.forEach(radio => {
+                    if (radio.value === savedSoundOption) radio.checked = true;
+                });
+                soundOption = savedSoundOption; // 変数にも反映
+            }
+
+            const savedBgmOption = localStorage.getItem(LS_KEYS.BGM_OPTION);
+            if (savedBgmOption) {
+                bgmOptions.forEach(radio => {
+                    if (radio.value === savedBgmOption) radio.checked = true;
+                });
+                bgmOptionValue = savedBgmOption; // 変数にも反映
+            }
+
+            const savedExhaleTime = localStorage.getItem(LS_KEYS.EXHALE_TIME);
+            if (savedExhaleTime) exhaleTimeSelect.value = savedExhaleTime;
+
+            const savedHoldTime = localStorage.getItem(LS_KEYS.HOLD_TIME);
+            if (savedHoldTime) holdTimeSelect.value = savedHoldTime;
+
+            const savedInhaleTime = localStorage.getItem(LS_KEYS.INHALE_TIME);
+            if (savedInhaleTime) inhaleTimeSelect.value = savedInhaleTime;
+
+            const savedSets = localStorage.getItem(LS_KEYS.SETS);
+            if (savedSets) setsSelect.value = savedSets;
+            
+            console.log('前回保存された設定を読み込みました。');
+        }
+
+        // ★★★ 設定変更時にlocalStorageに保存する関数 ★★★
+        function saveSetting(key, value) {
+             try {
+                localStorage.setItem(key, value);
+                console.log(`設定を保存しました: ${key} = ${value}`);
+            } catch (e) {
+                console.error('localStorageへの保存に失敗しました:', e);
+                // 容量超過などの可能性
+            }
+        }
+
+        // ★★★ 各設定要素に変更があった時のイベントリスナーを追加 ★★★
+        exhaleTimeSelect.addEventListener('change', (e) => saveSetting(LS_KEYS.EXHALE_TIME, e.target.value));
+        holdTimeSelect.addEventListener('change', (e) => saveSetting(LS_KEYS.HOLD_TIME, e.target.value));
+        inhaleTimeSelect.addEventListener('change', (e) => saveSetting(LS_KEYS.INHALE_TIME, e.target.value));
+        setsSelect.addEventListener('change', (e) => saveSetting(LS_KEYS.SETS, e.target.value));
+
+        soundOptions.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                if (e.target.checked) saveSetting(LS_KEYS.SOUND_OPTION, e.target.value);
+            });
+        });
+
+        bgmOptions.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                if (e.target.checked) saveSetting(LS_KEYS.BGM_OPTION, e.target.value);
+            });
+        });
+
+
+        // ★★★ ページ読み込み完了時に設定を復元 ★★★
+        document.addEventListener('DOMContentLoaded', loadSettings);
+
+
         
         // ビデオ再生が終了したときのイベントリスナー
         videoPlayer.addEventListener('ended', function() {
@@ -272,21 +350,16 @@
             }
         });
         
-        // スタートボタンのイベントリスナー
+        // --- スタートボタンのリスナー (★おまじない削除, 設定取得処理はstartExerciseへ) ---
         startBtn.addEventListener('click', function() {
             if (!isPlaying) {
-                // ★★★ 再生許可を得るための「おまじない」★★★
-                // ボタンが押された直後に、一瞬だけBGMを再生してすぐに止める。
-                // これにより、iOSブラウザに「ユーザーが音声を再生する意思を示した」と認識させる。
-                bgmPlayer.load(); // ファイルの読み込みを試みる
-                bgmPlayer.play().catch(e => { 
-                    // ここでの再生失敗エラーは無視しても良い場合が多い
-                    // (まだ再生準備ができていない場合など)
-                    console.log("Pre-play attempt for unlocking audio."); 
-                });
+                // ★ iPhone用のおまじないは効果がなかったので削除推奨 ★
+                /*
+                bgmPlayer.load(); 
+                bgmPlayer.play().catch(e => { console.log("Pre-play attempt."); });
                 bgmPlayer.pause();
-
-                startExercise();
+                */
+                startExercise(); 
             }
         });
         
@@ -297,28 +370,28 @@
             resetExercise();
         });
         
-        // エクササイズを開始する関数
+        // エクササイズを開始する関数 (localStorage対応版)
         function startExercise() {
-            // 音声オプションを取得
-            for (const option of soundOptions) {
-                if (option.checked) {
-                    soundOption = option.value;// 'clock' または 'nosound'
-                    break;
+            // ★ 1. 現在選択されている設定値を取得 (DOMから直接読み込む)
+            //    (loadSettingsやchangeイベントで変数にも反映されているが、開始時に再確認)
+            soundOptions.forEach(radio => { 
+                if (radio.checked) {
+                    soundOption = radio.value; // グローバル変数も更新
+                } 
+            });
+            bgmOptions.forEach(radio => { 
+                if (radio.checked) {
+                    bgmOptionValue = radio.value; // グローバル変数も更新
                 }
-            }
+            });
+            
+            // ★ totalSets もここで取得・確定 (parseInt を忘れずに)
+            totalSets = parseInt(setsSelect.value); 
 
-            // ★ BGMオプションを取得
-            for (const option of bgmOptions) {
-                if (option.checked) {
-                    bgmOptionValue = option.value; // 'bgmon' または 'bgmoff'
-                    break;
-                }
-            }
-
-            // ★ BGM再生制御
+            // ★ 2. BGMの再生制御 (これはlocalStorageとは直接関係ないが、開始時処理)
             if (bgmOptionValue === 'bgmon') { // BGMありの場合
-                bgmPlayer.volume = 0.1;
-                // ★ 少し遅らせて再生を試みる (例: 100ミリ秒後)
+                bgmPlayer.volume = 0.05; // 音量設定 (姫様の調整値)
+                // iPhone対策のsetTimeout (効果は限定的だったかもしれませんが残しておきます)
                 setTimeout(() => {
                     bgmPlayer.play().catch(error => { 
                         console.error('BGMの再生に失敗しました (setTimeout):', error);
@@ -329,23 +402,18 @@
                  bgmPlayer.currentTime = 0; 
             }
             
-            // 設定を取得
-            const exhaleTime = exhaleTimeSelect.value;
-            const holdTime = holdTimeSelect.value;
-            const inhaleTime = inhaleTimeSelect.value;
-            totalSets = parseInt(setsSelect.value);
-            
+            // ★ 3. エクササイズ状態の初期化
             currentSet = 1;
             isPlaying = true;
             stopRequested = false;
             
-            // UIを更新
+            // ★ 4. UIの更新
             startBtn.style.display = 'none';
             stopBtn.style.display = 'block';
+            updateProgress(); // セット数の表示を更新
             
-            updateProgress();
-            // 最初にスタート動画を再生
-            playPhase('start');
+            // ★ 5. 最初のフェーズを開始
+            playPhase('start'); 
         }
         
         // 特定のフェーズの動画を再生する関数
